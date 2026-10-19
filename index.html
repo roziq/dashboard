@@ -377,18 +377,21 @@
 
         if (approval === "YES") {
           approvalCount++;
-          
-          if (finished !== "") {
-            completeCount++;
-          } else {
-            // Selama status YES dan kolom Finished masih kosong, masuk kategori Active Outside Now
-            activeCount++;
-          }
+        }
 
-          // Hitung overdue berdasarkan Kolom R (Alert Sent)
-          if (finished === "" && alertSent !== "") {
-            overdueCount++;
-          }
+        // 1. Active Outside: status YES tapi kolom Finished masih kosong
+        if (approval === "YES" && finished === "") {
+          activeCount++;
+        }
+
+        // 2. Overdue: menghitung jumlah baris yang kolom R (Alert Sent) terisi
+        if (alertSent !== "") {
+          overdueCount++;
+        }
+
+        // 3. Complete: status YES dan kolom Finished terisi
+        if (approval === "YES" && finished !== "") {
+          completeCount++;
         }
       });
 
