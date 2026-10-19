@@ -1,17 +1,452 @@
-<script>
-  // Ganti dengan URL Web App Google Apps Script Anda
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-Gwbs49S_W1sv_B_cAo2rd-mFKEeejNo9olYwc6Bw14FErqEwwzVPaSJwmxcXRBN2/exec";
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Dispense Monitoring Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text-primary: #0F172A;
+      --text-secondary: #64748B;
+      --border-color: #E2E8F0;
+      --header-bg: #0F172A;
+    }
 
-  window.onload = function() {
-    fetch(WEB_APP_URL + "?action=get_data")
-      .then(response => response.json())
-      .then(data => {
-        handleDataSuccess(data);
-      })
-      .catch(err => {
-        console.error("Gagal mengambil data:", err);
-        document.getElementById("tableBody").innerHTML = 
-          `<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Gagal memuat data dari server.</td></tr>`;
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-primary); padding: 20px; transition: all 0.3s ease; }
+    .dashboard-container { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Header Styling */
+    .header {
+      background: var(--header-bg);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .header-title h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    .header-title p { font-size: 0.85rem; color: #94A3B8; margin-top: 2px; }
+    
+    .filter-group { display: flex; align-items: center; gap: 10px; }
+    .filter-select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select option { background: #1E293B; color: white; }
+
+    /* KPI Cards Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 18px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+    .kpi-title { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-value { font-size: 1.8rem; font-weight: 700; margin-top: 8px; }
+
+    /* Color Accents */
+    .val-total { color: #3B82F6; }
+    .val-approval { color: #10B981; }
+    .val-active { color: #F59E0B; }
+    .val-overdue { color: #EF4444; }
+    .val-complete { color: #6366F1; }
+
+    /* Charts Section */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 16px;
+      height: 320px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chart-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 15px; color: var(--text-primary); }
+    .chart-container { flex: 1; position: relative; width: 100%; height: 100%; }
+
+    /* Table Section & Pagination */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .table-header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .table-header-box h3 { font-size: 1rem; font-weight: 600; }
+    
+    .pagination-controls { display: flex; align-items: center; gap: 8px; }
+    .btn-page {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-page:hover:not(:disabled) { background: var(--border-color); }
+    .btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .badge-count { font-size: 0.75rem; background: #E2E8F0; color: #475569; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    th { padding: 12px 14px; border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-weight: 600; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
+
+    /* Badges */
+    .badge { padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; display: inline-block; }
+    .badge-yes { background: #DCFCE7; color: #15803D; }
+    .badge-no { background: #FEE2E2; color: #B91C1C; }
+    .badge-pending { background: #FEF3C7; color: #B45309; }
+
+    .loading-overlay { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.9rem; }
+    .error-banner { background: #FEE2E2; color: #991B1B; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem; display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <div id="errorBanner" class="error-banner"></div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
+        <h1>E-DISPENSE MONITORING DASHBOARD</h1>
+        <p>State Vocational High School One Purbalingga</p>
+      </div>
+      <div class="filter-group">
+        <select id="filterClass" class="filter-select" onchange="applyFilters()">
+          <option value="ALL">Semua Kelas</option>
+        </select>
+        <select id="filterApproval" class="filter-select" onchange="applyFilters()">
+          <option value="ALL">Semua Status Approval</option>
+          <option value="YES">APPROVED (YES)</option>
+          <option value="NO">REJECTED (NO)</option>
+          <option value="PENDING">PENDING</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Application</div>
+        <div id="kpiTotal" class="kpi-value val-total">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Approval (YES)</div>
+        <div id="kpiApproval" class="kpi-value val-approval">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Active Outside Now</div>
+        <div id="kpiActive" class="kpi-value val-active">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Overdue (Violation)</div>
+        <div id="kpiOverdue" class="kpi-value val-overdue">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">Complete (Return)</div>
+        <div id="kpiComplete" class="kpi-value val-complete">0</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Category Distribution</h3>
+        <div class="chart-container"><canvas id="donutChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Top 5 Student Most Dispense</h3>
+        <div class="chart-container"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Daily Dispensation Trend</h3>
+        <div class="chart-container"><canvas id="trendChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Table with Pagination -->
+    <div class="table-card">
+      <div class="table-header-box">
+        <h3>Live Monitoring</h3>
+        <div class="pagination-controls">
+          <button id="btnPrev" onclick="changePage(-1)" class="btn-page" disabled>&laquo; Prev</button>
+          <span id="pageIndicator" class="badge-count">Halaman 1 dari 1</span>
+          <button id="btnNext" onclick="changePage(1)" class="btn-page">&raquo; Next</button>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Student Name</th>
+              <th>Class</th>
+              <th>Start Time</th>
+              <th>Return Time</th>
+              <th>APPROVAL</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="6" class="loading-overlay">Memuat data dari Google Sheets...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PASTE URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI (Akhiran /exec)
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-Gwbs49S_W1sv_B_cAo2rd-mFKEeejNo9olYwc6Bw14FErqEwwzVPaSJwmxcXRBN2/exec";
+
+    let rawSheetData = [];
+    let filteredRows = [];
+    let currentPage = 1;
+    const rowsPerPage = 5;
+
+    let donutChartInst, barChartInst, trendChartInst;
+
+    window.onload = function() {
+      if (!WEB_APP_URL || WEB_APP_URL.includes("PASTE_URL_")) {
+        showError("Variabel WEB_APP_URL belum diisi dengan URL Google Apps Script yang valid.");
+        return;
+      }
+
+      fetch(`${WEB_APP_URL}?action=get_data`)
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          handleDataSuccess(data);
+        })
+        .catch(err => {
+          console.error("Gagal Fetch Data:", err);
+          showError(`Gagal mengambil data dari Google Sheets. Pastikan 'Who has access' di Apps Script di-set ke 'Anyone'. Detail: ${err.message}`);
+          document.getElementById("tableBody").innerHTML = `<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:20px;">Gagal memuat data dari server.</td></tr>`;
+        });
+    };
+
+    function showError(msg) {
+      const banner = document.getElementById("errorBanner");
+      banner.style.display = "block";
+      banner.innerText = "⚠️ " + msg;
+    }
+
+    function handleDataSuccess(data) {
+      if (!data || data.length <= 1) {
+        document.getElementById("tableBody").innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Belum ada data dispensasi.</td></tr>`;
+        return;
+      }
+
+      rawSheetData = data.slice(1);
+      populateClassFilter(rawSheetData);
+      processAndRender(rawSheetData);
+    }
+
+    function populateClassFilter(rows) {
+      const classSet = new Set();
+      rows.forEach(r => { if (r[11]) classSet.add(r[11]); });
+
+      const select = document.getElementById("filterClass");
+      select.innerHTML = `<option value="ALL">Semua Kelas</option>`;
+      classSet.forEach(cls => {
+        select.innerHTML += `<option value="${cls}">${cls}</option>`;
       });
-  };
-</script>
+    }
+
+    function applyFilters() {
+      const selectedClass = document.getElementById("filterClass").value;
+      const selectedApproval = document.getElementById("filterApproval").value;
+
+      const filtered = rawSheetData.filter(r => {
+        const matchClass = (selectedClass === "ALL") || (r[11] === selectedClass);
+        
+        let status = r[13] ? r[13].toUpperCase().trim() : "PENDING";
+        if (status === "") status = "PENDING";
+        const matchApproval = (selectedApproval === "ALL") || 
+                              (selectedApproval === "YES" && status === "YES") ||
+                              (selectedApproval === "NO" && status === "NO") ||
+                              (selectedApproval === "PENDING" && status !== "YES" && status !== "NO");
+
+        return matchClass && matchApproval;
+      });
+
+      processAndRender(filtered);
+    }
+
+    function processAndRender(rows) {
+      let total = rows.length;
+      let approvalCount = 0;
+      let activeCount = 0;
+      let overdueCount = 0;
+      let completeCount = 0;
+
+      const catCounts = {};
+      const studentCounts = {};
+      const dateTrendCounts = {};
+
+      rows.forEach(r => {
+        const cat = r[3] || "Lainnya";
+        const student = r[10] || "Tidak Diketahui";
+        const dateStr = r[0] ? r[0].split(' ')[0] : 'Lainnya';
+        const approval = r[13] ? r[13].toUpperCase().trim() : "";
+        const finished = r[15] ? r[15].trim() : "";
+
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+        studentCounts[student] = (studentCounts[student] || 0) + 1;
+        dateTrendCounts[dateStr] = (dateTrendCounts[dateStr] || 0) + 1;
+
+        if (approval === "YES") {
+          approvalCount++;
+          if (finished !== "") {
+            completeCount++;
+          } else {
+            activeCount++;
+          }
+        }
+      });
+
+      document.getElementById("kpiTotal").innerText = total;
+      document.getElementById("kpiApproval").innerText = approvalCount;
+      document.getElementById("kpiActive").innerText = activeCount;
+      document.getElementById("kpiOverdue").innerText = overdueCount;
+      document.getElementById("kpiComplete").innerText = completeCount;
+
+      renderCharts(catCounts, studentCounts, dateTrendCounts);
+
+      filteredRows = rows.slice().reverse();
+      currentPage = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("tableBody");
+      const totalRows = filteredRows.length;
+
+      if (totalRows === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Tidak ada data yang cocok dengan filter.</td></tr>`;
+        document.getElementById("pageIndicator").innerText = "Halaman 0 dari 0";
+        document.getElementById("btnPrev").disabled = true;
+        document.getElementById("btnNext").disabled = true;
+        return;
+      }
+
+      const totalPages = Math.ceil(totalRows / rowsPerPage);
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const endIndex = startIndex + rowsPerPage;
+      const paginatedRows = filteredRows.slice(startIndex, endIndex);
+
+      let html = "";
+      paginatedRows.forEach(r => {
+        const timestamp = r[0] || "-";
+        const student = r[10] || "-";
+        const cls = r[11] || "-";
+        const start = r[8] || "-";
+        const returnT = r[9] || "-";
+        const appStatus = r[13] ? r[13].toUpperCase().trim() : "";
+
+        let badgeHtml = `<span class="badge badge-pending">PENDING</span>`;
+        if (appStatus === "YES") badgeHtml = `<span class="badge badge-yes">YES</span>`;
+        if (appStatus === "NO") badgeHtml = `<span class="badge badge-no">NO</span>`;
+
+        html += `
+          <tr>
+            <td>${timestamp}</td>
+            <td><strong>${student}</strong></td>
+            <td>${cls}</td>
+            <td>${start}</td>
+            <td>${returnT}</td>
+            <td>${badgeHtml}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+
+      document.getElementById("pageIndicator").innerText = `Halaman ${currentPage} dari ${totalPages} (${totalRows} Data)`;
+      document.getElementById("btnPrev").disabled = (currentPage === 1);
+      document.getElementById("btnNext").disabled = (currentPage === totalPages);
+    }
+
+    function changePage(direction) {
+      currentPage += direction;
+      renderTable();
+    }
+
+    function renderCharts(catData, studentData, trendData) {
+      if (donutChartInst) donutChartInst.destroy();
+      donutChartInst = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(catData),
+          datasets: [{
+            data: Object.values(catData),
+            backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+
+      const sortedStudents = Object.entries(studentData).sort((a,b) => b[1] - a[1]).slice(0, 5);
+      if (barChartInst) barChartInst.destroy();
+      barChartInst = new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+          labels: sortedStudents.map(s => s[0]),
+          datasets: [{
+            label: 'Jumlah Dispensasi',
+            data: sortedStudents.map(s => s[1]),
+            backgroundColor: '#3B82F6',
+            borderRadius: 6
+          }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+
+      if (trendChartInst) trendChartInst.destroy();
+      trendChartInst = new Chart(document.getElementById('trendChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(trendData).slice(-5),
+          datasets: [{
+            label: 'Total Dispensasi',
+            data: Object.values(trendData).slice(-5),
+            backgroundColor: '#6366F1',
+            borderRadius: 6
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+  </script>
+</body>
+</html>
