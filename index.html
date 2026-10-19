@@ -368,7 +368,8 @@
         const student = r[10] || "Tidak Diketahui";
         const dateStr = r[0] ? r[0].split(' ')[0] : 'Lainnya';
         const approval = r[13] ? r[13].toUpperCase().trim() : "";
-        const finished = r[15] ? r[15].trim() : "";
+        const finished = r[15] ? String(r[15]).trim() : "";
+        const alertSent = r[17] ? String(r[17]).trim() : ""; // Kolom R (Alert Sent)
 
         catCounts[cat] = (catCounts[cat] || 0) + 1;
         studentCounts[student] = (studentCounts[student] || 0) + 1;
@@ -376,10 +377,15 @@
 
         if (approval === "YES") {
           approvalCount++;
+          
           if (finished !== "") {
             completeCount++;
           } else {
-            activeCount++;
+            if (alertSent !== "") {
+              overdueCount++;
+            } else {
+              activeCount++;
+            }
           }
         }
       });
