@@ -381,11 +381,13 @@
           if (finished !== "") {
             completeCount++;
           } else {
-            if (alertSent !== "") {
-              overdueCount++;
-            } else {
-              activeCount++;
-            }
+            // Selama status YES dan kolom Finished masih kosong, masuk kategori Active Outside Now
+            activeCount++;
+          }
+
+          // Hitung overdue berdasarkan Kolom R (Alert Sent)
+          if (finished === "" && alertSent !== "") {
+            overdueCount++;
           }
         }
       });
