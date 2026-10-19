@@ -1,0 +1,17 @@
+<script>
+  // Ganti dengan URL Web App Google Apps Script Anda
+  const WEB_APP_URL = "PASTE_URL_WEB_APP_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI";
+
+  window.onload = function() {
+    fetch(WEB_APP_URL + "?action=get_data")
+      .then(response => response.json())
+      .then(data => {
+        handleDataSuccess(data);
+      })
+      .catch(err => {
+        console.error("Gagal mengambil data:", err);
+        document.getElementById("tableBody").innerHTML = 
+          `<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Gagal memuat data dari server.</td></tr>`;
+      });
+  };
+</script>
