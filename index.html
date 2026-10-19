@@ -16,6 +16,15 @@
       --header-bg: #0F172A;
     }
 
+    [data-theme="dark"] {
+      --bg-main: #0B0F17;
+      --card-bg: #1E293B;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --border-color: #334155;
+      --header-bg: #1E293B;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
     body { background-color: var(--bg-main); color: var(--text-primary); padding: 20px; transition: all 0.3s ease; }
     .dashboard-container { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
@@ -36,7 +45,7 @@
     .header-title h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
     .header-title p { font-size: 0.85rem; color: #94A3B8; margin-top: 2px; }
     
-    .filter-group { display: flex; align-items: center; gap: 10px; }
+    .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .filter-select {
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -48,6 +57,22 @@
       cursor: pointer;
     }
     .filter-select option { background: #1E293B; color: white; }
+
+    /* Theme Toggle Button */
+    .btn-theme {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-theme:hover { background: rgba(255, 255, 255, 0.2); }
 
     /* KPI Cards Grid */
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
@@ -147,6 +172,7 @@
           <option value="NO">REJECTED (NO)</option>
           <option value="PENDING">PENDING</option>
         </select>
+        <button id="themeToggle" onclick="toggleTheme()" class="btn-theme" title="Ubah Mode Mode">🌙</button>
       </div>
     </div>
 
@@ -221,7 +247,7 @@
   </div>
 
   <script>
-    // PASTE URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI (Akhiran /exec)
+    // URL WEB APP GOOGLE APPS SCRIPT ANDA
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-Gwbs49S_W1sv_B_cAo2rd-mFKEeejNo9olYwc6Bw14FErqEwwzVPaSJwmxcXRBN2/exec";
 
     let rawSheetData = [];
@@ -230,6 +256,33 @@
     const rowsPerPage = 5;
 
     let donutChartInst, barChartInst, trendChartInst;
+
+    // --- LOGIKA DARK / LIGHT MODE ---
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      const targetTheme = currentTheme === "dark" ? "light" : "dark";
+      
+      if (targetTheme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.getElementById("themeToggle").innerText = "☀️";
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        document.getElementById("themeToggle").innerText = "🌙";
+      }
+      localStorage.setItem("theme", targetTheme);
+    }
+
+    // Load tema tersimpan saat pertama kali dibuka
+    (function initTheme() {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        window.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById("themeToggle");
+          if (btn) btn.innerText = "☀️";
+        });
+      }
+    })();
 
     window.onload = function() {
       if (!WEB_APP_URL || WEB_APP_URL.includes("PASTE_URL_")) {
