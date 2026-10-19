@@ -164,15 +164,15 @@
       </div>
       <div class="filter-group">
         <select id="filterClass" class="filter-select" onchange="applyFilters()">
-          <option value="ALL">Semua Kelas</option>
+          <option value="ALL">Class</option>
         </select>
         <select id="filterApproval" class="filter-select" onchange="applyFilters()">
-          <option value="ALL">Semua Status Approval</option>
+          <option value="ALL">Approval</option>
           <option value="YES">APPROVED (YES)</option>
           <option value="NO">REJECTED (NO)</option>
           <option value="PENDING">PENDING</option>
         </select>
-        <button id="themeToggle" onclick="toggleTheme()" class="btn-theme" title="Ubah Mode Mode">🌙</button>
+        <button id="themeToggle" onclick="toggleTheme()" class="btn-theme" title="Ubah Mode">🌙</button>
       </div>
     </div>
 
@@ -327,7 +327,7 @@
       rows.forEach(r => { if (r[11]) classSet.add(r[11]); });
 
       const select = document.getElementById("filterClass");
-      select.innerHTML = `<option value="ALL">Semua Kelas</option>`;
+      select.innerHTML = `<option value="ALL">Class</option>`;
       classSet.forEach(cls => {
         select.innerHTML += `<option value="${cls}">${cls}</option>`;
       });
@@ -369,137 +369,4 @@
         const student = r[10] || "Tidak Diketahui";
         const dateStr = r[0] ? r[0].split(' ')[0] : 'Lainnya';
         const approval = r[13] ? r[13].toUpperCase().trim() : "";
-        const finished = r[15] ? r[15].trim() : "";
-
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
-        studentCounts[student] = (studentCounts[student] || 0) + 1;
-        dateTrendCounts[dateStr] = (dateTrendCounts[dateStr] || 0) + 1;
-
-        if (approval === "YES") {
-          approvalCount++;
-          if (finished !== "") {
-            completeCount++;
-          } else {
-            activeCount++;
-          }
-        }
-      });
-
-      document.getElementById("kpiTotal").innerText = total;
-      document.getElementById("kpiApproval").innerText = approvalCount;
-      document.getElementById("kpiActive").innerText = activeCount;
-      document.getElementById("kpiOverdue").innerText = overdueCount;
-      document.getElementById("kpiComplete").innerText = completeCount;
-
-      renderCharts(catCounts, studentCounts, dateTrendCounts);
-
-      filteredRows = rows.slice().reverse();
-      currentPage = 1;
-      renderTable();
-    }
-
-    function renderTable() {
-      const tbody = document.getElementById("tableBody");
-      const totalRows = filteredRows.length;
-
-      if (totalRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Tidak ada data yang cocok dengan filter.</td></tr>`;
-        document.getElementById("pageIndicator").innerText = "Halaman 0 dari 0";
-        document.getElementById("btnPrev").disabled = true;
-        document.getElementById("btnNext").disabled = true;
-        return;
-      }
-
-      const totalPages = Math.ceil(totalRows / rowsPerPage);
-      if (currentPage > totalPages) currentPage = totalPages;
-      if (currentPage < 1) currentPage = 1;
-
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const endIndex = startIndex + rowsPerPage;
-      const paginatedRows = filteredRows.slice(startIndex, endIndex);
-
-      let html = "";
-      paginatedRows.forEach(r => {
-        const timestamp = r[0] || "-";
-        const student = r[10] || "-";
-        const cls = r[11] || "-";
-        const start = r[8] || "-";
-        const returnT = r[9] || "-";
-        const appStatus = r[13] ? r[13].toUpperCase().trim() : "";
-
-        let badgeHtml = `<span class="badge badge-pending">PENDING</span>`;
-        if (appStatus === "YES") badgeHtml = `<span class="badge badge-yes">YES</span>`;
-        if (appStatus === "NO") badgeHtml = `<span class="badge badge-no">NO</span>`;
-
-        html += `
-          <tr>
-            <td>${timestamp}</td>
-            <td><strong>${student}</strong></td>
-            <td>${cls}</td>
-            <td>${start}</td>
-            <td>${returnT}</td>
-            <td>${badgeHtml}</td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-
-      document.getElementById("pageIndicator").innerText = `Halaman ${currentPage} dari ${totalPages} (${totalRows} Data)`;
-      document.getElementById("btnPrev").disabled = (currentPage === 1);
-      document.getElementById("btnNext").disabled = (currentPage === totalPages);
-    }
-
-    function changePage(direction) {
-      currentPage += direction;
-      renderTable();
-    }
-
-    function renderCharts(catData, studentData, trendData) {
-      if (donutChartInst) donutChartInst.destroy();
-      donutChartInst = new Chart(document.getElementById('donutChart'), {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(catData),
-          datasets: [{
-            data: Object.values(catData),
-            backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4']
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-      });
-
-      const sortedStudents = Object.entries(studentData).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      if (barChartInst) barChartInst.destroy();
-      barChartInst = new Chart(document.getElementById('barChart'), {
-        type: 'bar',
-        data: {
-          labels: sortedStudents.map(s => s[0]),
-          datasets: [{
-            label: 'Jumlah Dispensasi',
-            data: sortedStudents.map(s => s[1]),
-            backgroundColor: '#3B82F6',
-            borderRadius: 6
-          }]
-        },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-      });
-
-      if (trendChartInst) trendChartInst.destroy();
-      trendChartInst = new Chart(document.getElementById('trendChart'), {
-        type: 'bar',
-        data: {
-          labels: Object.keys(trendData).slice(-5),
-          datasets: [{
-            label: 'Total Dispensasi',
-            data: Object.values(trendData).slice(-5),
-            backgroundColor: '#6366F1',
-            borderRadius: 6
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-      });
-    }
-  </script>
-</body>
-</html>
+        const finished = r[15] ? r
