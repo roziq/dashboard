@@ -235,11 +235,12 @@
               <th>Class</th>
               <th>Start Time</th>
               <th>Return Time</th>
+              <th>PDF</th>
               <th>APPROVAL</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="6" class="loading-overlay">Memuat data dari Google Sheets...</td></tr>
+            <tr><td colspan="7" class="loading-overlay">Memuat data dari Google Sheets...</td></tr>
           </tbody>
         </table>
       </div>
@@ -300,7 +301,7 @@
         .catch(err => {
           console.error("Gagal Fetch Data:", err);
           showError(`Gagal mengambil data dari Google Sheets. Pastikan 'Who has access' di Apps Script di-set ke 'Anyone'. Detail: ${err.message}`);
-          document.getElementById("tableBody").innerHTML = `<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:20px;">Gagal memuat data dari server.</td></tr>`;
+          document.getElementById("tableBody").innerHTML = `<tr><td colspan="7" style="text-align:center; color:#DC2626; padding:20px;">Gagal memuat data dari server.</td></tr>`;
         });
     };
 
@@ -312,7 +313,7 @@
 
     function handleDataSuccess(data) {
       if (!data || data.length <= 1) {
-        document.getElementById("tableBody").innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Belum ada data dispensasi.</td></tr>`;
+        document.getElementById("tableBody").innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">Belum ada data dispensasi.</td></tr>`;
         return;
       }
 
@@ -413,7 +414,7 @@
       const totalRows = filteredRows.length;
 
       if (totalRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Tidak ada data yang cocok dengan filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">Tidak ada data yang cocok dengan filter.</td></tr>`;
         document.getElementById("pageIndicator").innerText = "Halaman 0 dari 0";
         document.getElementById("btnPrev").disabled = true;
         document.getElementById("btnNext").disabled = true;
@@ -435,11 +436,17 @@
         const cls = r[11] || "-";
         const start = r[8] || "-";
         const returnT = r[9] || "-";
+        const pdfUrl = r[14] ? String(r[14]).trim() : ""; // Kolom O (PDF Link)
         const appStatus = r[13] ? r[13].toUpperCase().trim() : "";
 
         let badgeHtml = `<span class="badge badge-pending">PENDING</span>`;
         if (appStatus === "YES") badgeHtml = `<span class="badge badge-yes">YES</span>`;
         if (appStatus === "NO") badgeHtml = `<span class="badge badge-no">NO</span>`;
+
+        let pdfHtml = "-";
+        if (pdfUrl !== "" && pdfUrl.startsWith("http")) {
+          pdfHtml = `<a href="${pdfUrl}" target="_blank" title="Download PDF Surat Dispensasi" style="color: #3B82F6; text-decoration: none; font-size: 1.2rem;" display="inline-block">📥</a>`;
+        }
 
         html += `
           <tr>
@@ -448,6 +455,7 @@
             <td>${cls}</td>
             <td>${start}</td>
             <td>${returnT}</td>
+            <td style="text-align: center;">${pdfHtml}</td>
             <td>${badgeHtml}</td>
           </tr>
         `;
